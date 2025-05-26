@@ -60,7 +60,10 @@ dist/
 
 # Gatsby files
 .cache/
-public/
+# Ignore everything in public except .gitkeep in temp
+default
+public/*
+!public/temp/.gitkeep
 
 # Vuepress build output
 .vuepress/dist/
