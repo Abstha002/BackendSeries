@@ -1,15 +1,30 @@
 import dotenv from 'dotenv'
-import express from "express"
-import connectDB from "./db/index.js";
+import connectDB from "./db/index.js"; // extension is must 
+
+// Configuring dotenv package
 
 dotenv.config(
     {
         path:'.env'
     }
 )
-connectDB();
+
+// This connects to the database why then and catch because async and await alway returns promise
+
+connectDB()
+.then(()=>{
+    app.listen(process.env.PORT||8000,()=>{
+    console.log(`listening on ${process.env.PORT}`);
+})
+})
+.catch((error)=>{
+    console.log("MongoDB Error:-", error);
+    
+})
 
 /*
+This is way for connecting with the database on method inside index.js only 
+
 import mongoose from "mongoose";
 import { DB_NAME } from "./constant";
 
