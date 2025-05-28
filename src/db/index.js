@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { DB_NAME } from "../constants.js"; // adjust filename as needed
+import { DB_NAME } from "../constants.js"; 
 
 const connectDB = async () => {
     try {
@@ -15,3 +15,4 @@ const connectDB = async () => {
 
 export default connectDB;
 
+// This main purpose of this folder is just to connect with database. Async await is compulsory .Remember database is in another country

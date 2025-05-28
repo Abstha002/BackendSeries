@@ -1,0 +1,6 @@
+Status Code 
+1** is used for information
+2** is used for success
+3** is used for redirect
+4** is used for client side error
+5** is used for server side error
