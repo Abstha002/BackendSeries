@@ -3,7 +3,7 @@ import jwt,{ JsonWebTokenError } from "jsonwebtoken";
 import bcrypt from "bcrypt"
 
 
-const userSchema=new mongoose.Schema({
+const userSchema=new Schema({
     username:{
         type:String,
         required:true,
@@ -57,7 +57,7 @@ userSchema.pre("save",async function(next){
     //if the user has already create then this method
     if(!this.isModified("password")) return next();
 
-    this.password=bcrypt.hash(this.password,10);
+    this.password=await bcrypt.hash(this.password,10);
     next()
 })
 
