@@ -5,7 +5,22 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 
+const generateAccessAndRefreshToken=async(userId)=>{
+    try{
+        const user=await User.findById(userId)
+        const accessToken=user.generateAccessToken()
+        const refreshToken=user.generateRefreshToken()
+        user.refreshToken=refreshToken;
+        await user.save({ValidateBeforeSave:false})
 
+        return {accessToken,refreshToken};
+
+
+    }
+    catch(error){
+        throw new ApiError(500,  "generatetoken  "+error.message,)
+    }
+}
 
 const registerUser= asyncHandler(async (req,res)=>{
     // res.status(200).json({
@@ -30,17 +45,31 @@ const registerUser= asyncHandler(async (req,res)=>{
         throw new ApiError(400,"all fields are required")
     }
 
-    const existedUser=User.findOne({
+    const existedUser=await User.findOne({
         $or:[{username},{email}]
     })
     if(existedUser){
+        // Clean up uploaded files if user already exists
+        const avatarLocalPath = req.files?.avatar?.[0]?.path;
+        const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+        const fs = await import('fs');
+        if (avatarLocalPath && fs.existsSync(avatarLocalPath)) {
+            fs.unlinkSync(avatarLocalPath);
+        }
+        if (coverImageLocalPath && fs.existsSync(coverImageLocalPath)) {
+            fs.unlinkSync(coverImageLocalPath);
+        }
         throw new ApiError(400,"User already exists")
     }
+
 
     //avator first property return 
     const avatarLocalPath=req.files?.avatar[0]?.path;
     const coverImageLocalPath=req.files?.coverImage[0]?.path;
+
+
     if(!avatarLocalPath){
+        console.log(avatarLocalPath);
         throw new ApiError(400,"Avator is required");
     }
 
@@ -48,7 +77,8 @@ const registerUser= asyncHandler(async (req,res)=>{
     const coverImage=await uploadOnCloudinary(coverImageLocalPath)
 
     if(!avatar){
-        throw new ApiError(400,"Avatar is required");
+        console.log(avatar);
+        throw new ApiError(400,"Avatar is requiredd");
     }
 
    const user=await User.create({
@@ -58,10 +88,10 @@ const registerUser= asyncHandler(async (req,res)=>{
         email,
         password,
         username:username.toLowerCase()
-
     })
 
-    const createdUser=User.findById(user._id).select("-password -refreshToken");
+    // Await the query to get a plain JS object
+    const createdUser = await User.findById(user._id).select("-password -refreshToken").lean();
     if(!createdUser){
         throw new ApiError(500, "something went wrong while register the user");
     }
@@ -75,5 +105,75 @@ const registerUser= asyncHandler(async (req,res)=>{
     )
 })
 
+const loginUser=asyncHandler(async(req,res)=>{
+    //todos
+    //get user,email, password
+    //mongoose find one 
+    //set refreshToken,accessToken
 
-export default registerUser;
+    const {username,password,email}=req.body;
+    console.log(email,password,username)
+    if(!username && !email){
+        throw new ApiError(400,"Username or password is required")
+    }
+    const existedUser=await User.findOne({
+        $or:[{username},{email}]
+    })
+    if(!existedUser){
+        throw new ApiError(404,"User doesn't exist");
+    }
+    const isPasswordValid=await existedUser.isPasswordCorrect(password)
+    if(!isPasswordValid){
+        throw new ApiError(401,"password is not correct")
+    }
+
+    const {accessToken,refreshToken}=await generateAccessAndRefreshToken(existedUser._id);
+
+    const loggedInUser=await User.findById(existedUser._id).select("-password -refreshToken").lean();
+
+    const options={
+        httpOnly:true,
+        secure:false
+    }
+    return res.status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json(
+        new ApiResponse(
+            200,{
+                user:loggedInUser,accessToken,refreshToken
+            },
+            "user logged in Successfully"
+            
+        )
+)
+})
+
+const logoutUser=asyncHandler(async(req,res)=>{
+    await User.findByIdAndUpdate(req.user._id,
+        {
+            $set:{
+                refreshToken:undefined,
+            },
+        },
+        {
+            new:true
+        }
+    )
+    const options={
+        httpOnly:true,
+        secure:false
+    }
+    res
+    .status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
+    .json(
+        new ApiResponse(
+            200,
+            {},
+            "user logged out"
+        )
+    )
+})
+export {registerUser,loginUser,logoutUser} ;

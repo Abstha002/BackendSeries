@@ -14,17 +14,24 @@ import fs from "fs";
             if(!localFilePath) return null;
             //upload the file on internet
             const response=await cloudinary.uploader.upload(localFilePath,{
-                resource_type:auto
+                resource_type:"auto"
             })
-            console.log("File is uploaded on cloudinary",response.url);
-            console.log(response);
+            // Remove local file after successful upload
+            if (fs.existsSync(localFilePath)) {
+                fs.unlinkSync(localFilePath);
+            }
             return response;
         } catch (error) {
-            //remove the local saved temp file as the upload operation so failed
-            fs.unlinkSync(localFilePath)
+            // Remove local file only if it exists
+            if (localFilePath && fs.existsSync(localFilePath)) {
+                try {
+                    fs.unlinkSync(localFilePath);
+                } catch (e) {
+                    console.log('Failed to delete temp file:', e.message);
+                }
+            }
             console.log(error.message);
             return null;
-            
         }
     }
 
