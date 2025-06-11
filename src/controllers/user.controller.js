@@ -305,10 +305,76 @@ const updateUsercoverImage=asyncHandler(async(req,res)=>{
     ).select("-password")
     return res.status(200).json(new ApiResponse(200,user,"coverImage updated succesfully"))
 })
+
+
+const getUserchannelProfile=asyncHandler(async(req,res)=>{
+    const {username}=req.params
+    if(!username?.trim()){
+        throw new ApiError(400,"User is missing")
+    }
+    const channel=await User.aggregate([
+        {
+            $match:{
+                username:username?.toLowerCase()
+            }
+        },{
+            $lookup:{
+                from:"subscriptions",
+                foreignField:"channel",
+                localField:"_id",
+                as:"subscribers"
+            }
+        },{
+            $lookup:{
+                from:"subscriptions",
+                localField:"_id",
+                foreignField:"subscriber",
+                as:"subscriptedTo"
+            }
+        },{
+            $addFields:{
+                subscribersCount:{
+                    $size:"$subscribers"
+                },
+                channelSubscriberTo:{
+                    $size:"$subscriptedTo"  // reference lina ko lage $ use garnu parxa haii taa 
+                },
+                isSubcribed:{
+                    $cond:{
+                        if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+                        then:true,
+                        else:false
+                    }
+                }
+            }
+        },{
+            $project:{
+                fullname:1,
+                username:1,
+                subscribersCount:1,
+                channelSubscriberTo:1,
+                isSubcribed:1,
+                email:1,
+                avatar:1,
+                coverImage:1
+            }
+        }
+    ])
+
+    if(!channel){
+        throw new ApiError(400,"Channel is not founded or matched")
+    }
+    return res.status(200)
+    .json(new ApiResponse(200,channel[0],'User channel fetched successfully'))
+})
+
+// first ma match garyo user ani tespaxi look up garyo (look up garyo bhane join hanxa) join hane sake paxi euta euta jun jun n
+// naya fied add garyo ani project throw aba 1 halera send garyoo
 export {
     registerUser,loginUser,logoutUser,
     refreshAccessToken,changeCurrentPassword,
     getCurrentUser,updateAccountDetails,
-    updateUserAvatar,updateUsercoverImage
+    updateUserAvatar,updateUsercoverImage,
+    getUserchannelProfile
 
 } ;
