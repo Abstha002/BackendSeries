@@ -370,11 +370,57 @@ const getUserchannelProfile=asyncHandler(async(req,res)=>{
 
 // first ma match garyo user ani tespaxi look up garyo (look up garyo bhane join hanxa) join hane sake paxi euta euta jun jun n
 // naya fied add garyo ani project throw aba 1 halera send garyoo
+
+//aggreation bata array return hunxa haii
+
+const getWatchHistory=asyncHandler(async(req,res)=>{
+    // this is clear you interviewss
+    const user= await User.aggregate([
+     {   $match:{
+            _id:new mongoose.Types.ObjectId(req.user._id)
+        }}
+        ,{
+            $lookup:{
+                from:"videos",
+                localField:"watchHistory",
+                foreignField:"_id",
+                as:"watchHistory",
+                pipeline:[
+                    {
+                        $lookup:{
+                            from:"users",
+                            localField:"owner",
+                            foreignField:"_id",
+                            as:"owner",
+                            pipeline:[
+                                {
+                                    $project:{
+                                        fullname:1,
+                                        username:1,
+                                        avatar:1,
+                                    }
+                                }
+                            ]
+                        }
+                    },{
+                        $addFields:{
+                            owner:{
+                                $first:"$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+    return res.status(200)
+    .json(new ApiResponse(200,user[0].watchHistory,"Watch history successfully fetched"))
+})
 export {
     registerUser,loginUser,logoutUser,
     refreshAccessToken,changeCurrentPassword,
     getCurrentUser,updateAccountDetails,
     updateUserAvatar,updateUsercoverImage,
-    getUserchannelProfile
+    getUserchannelProfile,getWatchHistory
 
 } ;
